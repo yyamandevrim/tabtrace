@@ -29,8 +29,9 @@ document.addEventListener("DOMContentLoaded", () => {
             {
                 label: "second",
                 secs: 1
-            }
+            },
         ];
+
         for (const interval of intervals) {
             const count = Math.floor(seconds / interval.secs);
             if (count > 0) return `${count} ${interval.label}${count > 1 ? "s" : ""} ago`;
@@ -38,36 +39,53 @@ document.addEventListener("DOMContentLoaded", () => {
         return "just now";
     }
 
+    // extract domain from URL
+    function extractDomain(url) {
+        try {
+            return new URL(url).hostname;
+        } catch {
+            return "";
+        }
+    }
+
+    // save notes
     function saveNotes() {
-        // collect notes before saving. 
         entries.forEach((entry, i) => {
             const textarea = document.querySelector(`#note-${i}`);
-            if (textarea) {
-                entry.note = textarea.value;
-            }
+            if (textarea) entry.note = textarea.value;
         });
         browser.storage.local.set({
             history: entries
         });
     }
 
+    // show list
     function renderList(filtered) {
         list.innerHTML = "";
         filtered.forEach((entry, i) => {
+            const domain = extractDomain(entry.url);
+            const faviconUrl = domain ?
+                `https://www.google.com/s2/favicons?domain=${domain}` :
+                "";
+
             const li = document.createElement("li");
 
             li.innerHTML = `
-        <a class="title" href="${entry.url}" target="_blank" rel="noopener">${entry.title || entry.url}</a>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <img src="${faviconUrl}" alt="favicon" style="width:16px; height:16px; border-radius:3px;" />
+          <a class="title" href="${entry.url}" target="_blank" rel="noopener">${entry.title || entry.url}</a>
+        </div>
         <div class="url">${entry.url}</div>
         <div class="timestamp">${timeAgo(new Date(entry.timestamp))}</div>
         <button class="note-btn" data-index="${i}">${entry.note ? "Edit Note" : "Add Note"}</button>
         <textarea id="note-${i}" class="note-textarea" style="display: ${entry.note ? "block" : "none"};">${entry.note || ""}</textarea>
       `;
+
             list.appendChild(li);
         });
 
         // add events to note buttons.
-        document.querySelectorAll(".note-btn").forEach(btn => {
+        document.querySelectorAll(".note-btn").forEach((btn) => {
             btn.addEventListener("click", () => {
                 const i = btn.dataset.index;
                 const textarea = document.getElementById(`note-${i}`);
@@ -92,11 +110,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // search func.
     searchInput.addEventListener("input", () => {
         const q = searchInput.value.toLowerCase();
-        const filtered = entries.filter(e => {
+        const filtered = entries.filter((e) => {
             const note = e.note || "";
-            return (e.title && e.title.toLowerCase().includes(q)) ||
+            return (
+                (e.title && e.title.toLowerCase().includes(q)) ||
                 (e.url && e.url.toLowerCase().includes(q)) ||
-                (note.toLowerCase().includes(q));
+                note.toLowerCase().includes(q)
+            );
         });
         renderList(filtered);
     });
